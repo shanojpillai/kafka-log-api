@@ -1,15 +1,15 @@
 import json
 import logging
 from datetime import datetime
-from src.core.config import config
-from src.core.logger import setup_logger
 
-logger = setup_logger(__name__)
+# Create a simple logger for this module
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 class KafkaLogger:
     def __init__(self):
         """Initialize a mock Kafka producer for development."""
-        self.topic = config.get("kafka.topic_name")
+        self.topic = "logs"
         logger.info(f"Mock Kafka producer initialized (development mode)")
         
         # Create a simple in-memory store for logs

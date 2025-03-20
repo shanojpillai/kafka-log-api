@@ -1,10 +1,13 @@
 from fastapi import APIRouter, HTTPException
-from src.api.models import LogEntry, BatchLogRequest
-from src.core.kafka_producer import kafka_logger
-from src.core.logger import setup_logger
+from .models import LogEntry, BatchLogRequest
+from ..core.kafka_producer import kafka_logger
+import logging
+
+# Setup simple logger
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
-logger = setup_logger(__name__)
 
 @router.post("/log")
 async def create_log(log_entry: LogEntry):
