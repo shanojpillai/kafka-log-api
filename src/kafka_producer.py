@@ -3,6 +3,8 @@ import logging
 from datetime import datetime
 import time
 import random
+import os
+import ast  # For safely evaluating string representations of dictionaries
 
 # Create a simple logger for this module
 logging.basicConfig(level=logging.INFO)
@@ -17,47 +19,69 @@ class KafkaLogger:
         # Create a simple in-memory store for logs
         self.logs = []
         
-        # Create mock Kaggle data
-        self.kaggle_data = self._create_mock_data()
-        logger.info(f"Created mock Kaggle dataset with {len(self.kaggle_data)} entries")
+        # Try to load web logs dataset, fall back to mock data if not available
+        try:
+            if os.path.exists('data/processed_web_logs.csv'):
+                import pandas as pd
+                df = pd.read_csv('data/processed_web_logs.csv')
+                
+                # Convert string representation of metadata to actual dictionaries
+                df['metadata'] = df['metadata'].apply(lambda x: ast.literal_eval(x) if isinstance(x, str) else x)
+                
+                self.kaggle_data = df.to_dict('records')
+                logger.info(f"Loaded {len(self.kaggle_data)} logs from Web Logs dataset")
+            else:
+                self.kaggle_data = self._create_mock_data()
+                logger.info(f"Created mock web logs dataset with {len(self.kaggle_data)} entries")
+        except Exception as e:
+            logger.error(f"Error loading web logs data: {e}")
+            self.kaggle_data = self._create_mock_data()
+            logger.info(f"Falling back to mock dataset with {len(self.kaggle_data)} entries")
     
     def _create_mock_data(self):
-        """Create some mock log data for development."""
+        """Create some mock web log data for development."""
         return [
             {
-                "timestamp": "2023-05-01T10:15:30.123Z",
-                "service": "auth-service",
+                "timestamp": "17/May/2015:11:05:51 +0000",
+                "service": "web-server",
                 "level": "INFO",
-                "message": "User login successful",
-                "metadata": {"user_id": "u123", "ip": "192.168.1.1"}
+                "message": "Request successful for /index.html",
+                "metadata": {
+                    "ip": "192.168.1.1",
+                    "method": "GET",
+                    "protocol": "HTTP/1.1",
+                    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/58.0.3029.110",
+                    "referrer": "-",
+                    "size_bytes": 1280
+                }
             },
             {
-                "timestamp": "2023-05-01T10:16:45.789Z", 
-                "service": "payment-service",
+                "timestamp": "17/May/2015:11:06:15 +0000", 
+                "service": "web-server",
                 "level": "ERROR",
-                "message": "Payment processing failed",
-                "metadata": {"transaction_id": "tx456", "amount": 99.99}
+                "message": "Resource not found for /missing-page.html",
+                "metadata": {
+                    "ip": "192.168.1.5",
+                    "method": "GET",
+                    "protocol": "HTTP/1.1",
+                    "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 8_1_3)",
+                    "referrer": "http://example.com/index.html",
+                    "size_bytes": 520
+                }
             },
             {
-                "timestamp": "2023-05-01T10:17:12.456Z",
-                "service": "inventory-service",
+                "timestamp": "17/May/2015:11:07:03 +0000",
+                "service": "web-server",
                 "level": "WARN",
-                "message": "Low stock detected",
-                "metadata": {"product_id": "p789", "quantity": 5}
-            },
-            {
-                "timestamp": "2023-05-01T10:18:23.567Z",
-                "service": "notification-service",
-                "level": "INFO",
-                "message": "Email notification sent",
-                "metadata": {"email_id": "em1011", "recipient": "user@example.com"}
-            },
-            {
-                "timestamp": "2023-05-01T10:19:45.890Z",
-                "service": "auth-service",
-                "level": "ERROR",
-                "message": "Failed login attempt",
-                "metadata": {"ip": "203.0.113.42", "username": "admin", "reason": "invalid_password"}
+                "message": "Unauthorized for /admin/dashboard",
+                "metadata": {
+                    "ip": "192.168.1.10",
+                    "method": "POST",
+                    "protocol": "HTTP/1.1",
+                    "user_agent": "Mozilla/5.0 (X11; Linux x86_64) Firefox/37.0",
+                    "referrer": "http://example.com/login",
+                    "size_bytes": 320
+                }
             }
         ]
 
@@ -89,13 +113,13 @@ class KafkaLogger:
         time.sleep(delay)
         
         # Log and store
-        logger.info(f"Mock log sent: {json.dumps(log_data)[:100]}...")
+        logger.info(f"Mock log sent: {json.dumps(str(log_data)[:100])}...")
         self.logs.append(log_data)
         return {"status": "success", "message": "Log sent (development mode)"}
     
     def send_kaggle_log(self, index):
         """
-        Send a log from the mock Kaggle dataset.
+        Send a log from the web logs dataset.
         
         Args:
             index (int): Index of the log entry to send
@@ -111,7 +135,7 @@ class KafkaLogger:
     
     def send_batch_logs(self, start_index, count=10):
         """
-        Send multiple logs in sequence from the mock Kaggle dataset.
+        Send multiple logs in sequence from the web logs dataset.
         
         Args:
             start_index (int): Starting index
@@ -121,7 +145,7 @@ class KafkaLogger:
             dict: Status with count of successfully sent logs
         """
         max_index = len(self.kaggle_data) - 1
-        end_index = min(start_index + count, max_index)
+        end_index = min(start_index + count, max_index + 1)
         
         success_count = 0
         for i in range(start_index, end_index):
