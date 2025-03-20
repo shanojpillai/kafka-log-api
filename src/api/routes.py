@@ -62,6 +62,33 @@ async def send_batch_logs(request: BatchLogRequest):
         "success_count": response["success_count"]
     }
 
+@router.get("/logs")
+async def get_logs(limit: int = 10, service: str = None, level: str = None):
+    """
+    Retrieve logs from the in-memory store.
+    
+    Args:
+        limit: Maximum number of logs to return
+        service: Filter by service name
+        level: Filter by log level
+    """
+    logs = kafka_logger.logs.copy()
+    
+    # Apply filters
+    if service:
+        logs = [log for log in logs if log.get("service") == service]
+    if level:
+        logs = [log for log in logs if log.get("level") == level]
+    
+    # Get the most recent logs
+    logs = logs[:limit]
+    
+    return {
+        "status": "success",
+        "count": len(logs),
+        "logs": logs
+    }
+
 @router.get("/health")
 async def health_check():
     """
