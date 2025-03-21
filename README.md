@@ -1,4 +1,5 @@
 # Kafka Log Monitoring API
+![1_V13D6FbXu0lhNH0f3AGvBg](https://github.com/user-attachments/assets/5bdeef3e-6815-456e-9b5f-d61e8e1271df)
 
 A robust, scalable logging system using Kafka, FastAPI, and Spark Streaming, designed for high-throughput event processing.
 
